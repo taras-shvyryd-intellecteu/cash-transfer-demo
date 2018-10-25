@@ -6,13 +6,20 @@ import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.identity.Party
 import java.util.*
 
-class CorporateActionState(val owner: Party,
-                           val currency: Currency,
-                           val investments: Map<Party, Amount<Currency>>,
-                           val profit: Double,
-                           override val linearId: UniqueIdentifier): LinearState {
+data class CorporateActionState(val owner: Party,
+                                val currency: Currency,
+                                val profit: Double,
+                                var investments: Map<Party, Amount<Currency>> = mapOf(),
+                                override val linearId: UniqueIdentifier = UniqueIdentifier()) : LinearState {
     override val participants: List<Party>
         get() = investments.keys.toList().plusElement(owner)
 
-    fun dividend(party: Party) = investments[party]!!.plus(Amount((investments[party]!!.quantity * profit).toLong(), currency))
+    fun invest(party: Party, amount: Amount<Currency>): CorporateActionState {
+        val invested = investments[party]
+        return if (invested != null) {
+            copy(investments = investments.plus(party to invested.plus(amount)))
+        } else{
+            copy(investments = investments.plus(party to amount))
+        }
+    }
 }

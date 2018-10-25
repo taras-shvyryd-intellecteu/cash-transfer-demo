@@ -9,17 +9,13 @@ import java.util.*
 data class CorporateActionState(val owner: Party,
                                 val currency: Currency,
                                 val profit: Double,
-                                var investments: Map<Party, Amount<Currency>> = mapOf(),
+                                val investor: Party,
+                                val investment: Amount<Currency> = Amount(0, currency),
                                 override val linearId: UniqueIdentifier = UniqueIdentifier()) : LinearState {
     override val participants: List<Party>
-        get() = investments.keys.toList().plusElement(owner)
+        get() = listOf(owner, investor)
 
-    fun invest(party: Party, amount: Amount<Currency>): CorporateActionState {
-        val invested = investments[party]
-        return if (invested != null) {
-            copy(investments = investments.plus(party to invested.plus(amount)))
-        } else{
-            copy(investments = investments.plus(party to amount))
-        }
+    fun invest(amount: Amount<Currency>): CorporateActionState {
+        return copy(investment = investment.plus(amount))
     }
 }

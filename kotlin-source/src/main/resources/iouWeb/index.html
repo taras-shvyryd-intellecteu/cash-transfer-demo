@@ -31,10 +31,53 @@
         </div>
         <button ng-click="demoApp.openCreateIOUModal()" type="button" class="btn btn-primary navbar-btn">Create IOU</button>
         <button ng-click="demoApp.openIssueCashModal()" type="button" class="btn btn-primary navbar-btn">Issue cash</button>
+        <button ng-click="demoApp.openCorporateActionModal()" type="button"
+                class="btn btn-primary navbar-btn">Corporate action</button>
         <button ng-click="demoApp.refresh()" type="button" class="btn btn-default navbar-btn"><span
                 class="glyphicon glyphicon-refresh"></span></button>
     </div>
 </nav>
+
+<script type="text/ng-template" id="createCAModal.html">
+    <div class="modal-header">
+        <h4 class="modal-title">Add corporate action</h4>
+    </div>
+    <form>
+        <div class="modal-body">
+            <div class="from-group">
+                <label for="createInvestorParty" class="control-label">Investors</label>
+                <select ng-model="createCAModal.form.investor" class="form-control" id="createInvestorParty"
+                        ng-options="peer as peer for peer in createCAModal.peers">
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="createIOUCurrency" class="control-label">Currency (ISO code):</label>
+                <input type="text" ng-model="createCAModal.form.currency" class="form-control" id="createCACurrency">
+            </div>
+            <div class="form-group">
+                <label for="createIOUAmount" class="control-label">Investments (Int):</label>
+                <input type="text" ng-model="createCAModal.form.investments" class="form-control" id="createCAInvestments">
+            </div>
+            <div ng-show="createCAModal.formError" class="form-group">
+                <div class="alert alert-danger" role="alert">
+                    <span class="glyphicon glyphicon-exclamation-sign" aria-hidden="true"></span>
+                    <span class="sr-only">Error:</span>
+                    Enter valid CA creation parameters
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button ng-click="createCAModal.cancel()" type="button" class="btn btn-default">Close</button>
+            <button ng-click="createCAModal.create()" type="button" class="btn btn-primary">Create CA</button>
+        </div>
+    </form>
+</script>
+
+<script type="text/ng-template" id="createCAMsgModal.html">
+    <div class="modal-body" id="create-ca-modal-body">
+        {{ createCAMsgModal.message }}
+    </div>
+</script>
 
 <script type="text/ng-template" id="createIOUModal.html">
     <div class="modal-header">

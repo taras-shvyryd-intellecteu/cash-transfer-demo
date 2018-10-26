@@ -11,23 +11,18 @@ import net.corda.core.messaging.startFlow
 import net.corda.core.messaging.startTrackedFlow
 import net.corda.core.messaging.vaultQueryBy
 import net.corda.core.node.NodeInfo
+import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.core.utilities.loggerFor
 import net.corda.finance.contracts.asset.Cash
 import net.corda.finance.contracts.getCashBalances
-import net.corda.training.flow.IOUIssueFlow
-import net.corda.training.flow.IOUSettleFlow
-import net.corda.training.flow.IOUTransferFlow
-import net.corda.training.flow.SelfIssueCashFlow
+import net.corda.training.flow.*
+import net.corda.training.state.CorporateActionState
 import net.corda.training.state.IOUState
 import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.asn1.x500.style.BCStyle
 import org.slf4j.Logger
-import java.util.Currency
-import javax.ws.rs.GET
-import javax.ws.rs.PUT
-import javax.ws.rs.Path
-import javax.ws.rs.Produces
-import javax.ws.rs.QueryParam
+import java.util.*
+import javax.ws.rs.*
 import javax.ws.rs.core.MediaType
 import javax.ws.rs.core.Response
 
@@ -104,6 +99,84 @@ class IOUApi(val rpcOps: CordaRPCOps) {
     @Produces(MediaType.APPLICATION_JSON)
     // Display cash balances.
     fun getCashBalances() = rpcOps.getCashBalances()
+
+    @PUT
+    @Path("offer-ca")
+    fun offerCA(@QueryParam(value = "currency") currency: String,
+                @QueryParam(value = "profit") profit: Double,
+                @QueryParam(value = "party") party: String): Response {
+        val me = rpcOps.nodeInfo().legalIdentities.first()
+        val investor = rpcOps.wellKnownPartyFromX500Name(CordaX500Name.parse(party))
+                ?: throw IllegalArgumentException("Unknown party name.")
+
+        try {
+            val state = CorporateActionState(me, Currency.getInstance(currency), profit, investor)
+            val result = rpcOps.startTrackedFlow(::CAOfferFlow, state).returnValue.get()
+            return Response
+                    .status(Response.Status.CREATED)
+                    .entity("Transaction id ${result.id} committed to ledger.\n${result.tx.outputs.single()}")
+                    .build()
+        } catch (e: Exception) {
+            return Response
+                    .status(Response.Status.BAD_REQUEST)
+                    .entity(e.message)
+                    .build()
+        }
+    }
+
+    @GET
+    @Path("invest-ca")
+    fun investCA(@QueryParam(value = "id") id: String,
+                 @QueryParam(value = "amount") amount: Int,
+                 @QueryParam(value = "currency") currency: String): Response {
+        val linearId = UniqueIdentifier.fromString(id)
+        val investAmount = Amount(amount.toLong() * 100, Currency.getInstance(currency))
+
+        try {
+            rpcOps.startFlow(::CAInvestFlow, linearId, investAmount).returnValue.get()
+            return Response.status(Response.Status.CREATED).entity("$amount $currency invested in corporate action id $id.").build()
+        } catch (e: Exception){
+            return Response
+                    .status(Response.Status.BAD_REQUEST)
+                    .entity(e.message)
+                    .build()
+        }
+    }
+
+    @GET
+    @Path("open-ca")
+    fun openCA(@QueryParam(value = "id") id: String): Response {
+        val linearId = UniqueIdentifier.fromString(id)
+
+        try {
+            rpcOps.startFlow(::CAOpenFlow, linearId).returnValue.get()
+            return Response.status(Response.Status.CREATED).entity("Corporate action id $id is open, additional investing is unavailable").build()
+        } catch (e: Exception){
+            return Response
+                    .status(Response.Status.BAD_REQUEST)
+                    .entity(e.message)
+                    .build()
+        }
+    }
+
+    @GET
+    @Path("close-ca")
+    fun closeCA(@QueryParam(value = "id") id: String): Response {
+        val linearId = UniqueIdentifier.fromString(id)
+        val queryCriteria = QueryCriteria.LinearStateQueryCriteria(linearId = listOf(linearId))
+        val state = rpcOps.vaultQueryBy<CorporateActionState>(queryCriteria).states.single().state.data
+        val dividends = state.investment.quantity * state.profit / 100
+
+        try {
+            rpcOps.startFlow(::CACloseFlow, linearId).returnValue.get()
+            return Response.status(Response.Status.CREATED).entity("Corporate action id $id is closed, dividends payed $dividends ${state.currency.currencyCode}").build()
+        } catch (e: Exception){
+            return Response
+                    .status(Response.Status.BAD_REQUEST)
+                    .entity(e.message)
+                    .build()
+        }
+    }
 
     /**
      * Initiates a flow to agree an IOU between two parties.

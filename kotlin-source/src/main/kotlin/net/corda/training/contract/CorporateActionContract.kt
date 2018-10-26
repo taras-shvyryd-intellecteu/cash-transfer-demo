@@ -9,7 +9,7 @@ import net.corda.training.state.CorporateActionState
 class CorporateActionContract : Contract {
     companion object {
         @JvmStatic
-        val IOU_CONTRACT_ID = "net.corda.training.contract.CorporateActionContract"
+        val CA_CONTRACT_ID = "net.corda.training.contract.CorporateActionContract"
     }
 
     interface Commands : CommandData {

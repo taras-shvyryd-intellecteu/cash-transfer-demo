@@ -80,6 +80,13 @@ class IOUApi(val rpcOps: CordaRPCOps) {
         return rpcOps.vaultQueryBy<IOUState>().states
     }
 
+    @GET
+    @Path("corporate-actions")
+    @Produces(MediaType.APPLICATION_JSON)
+    fun getCAs(): List<StateAndRef<ContractState>> {
+        return rpcOps.vaultQueryBy<CorporateActionState>().states
+    }
+
     /**
      * Displays all cash states that exist in the node's vault.
      */
